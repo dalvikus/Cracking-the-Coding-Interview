@@ -3,6 +3,50 @@
 
     hint: pile up numbers from 3, 5, 7
 
+Update
+======
+We need only three queues; each is related to 3, 5, and 7.
+See below 1. Start with these queues:
+    (1, 0, 0)   3
+    (0, 1, 0)   5
+    (0, 0, 1)   7
+
+Each has only one. The smallest one from first entries of each queue is
+    (1, 0, 0) = 3
+Next numbers from this are
+    (2, 0, 0) = 9
+    (1, 1, 0) = 15
+    (1, 0, 1) = 17
+
+The first is appended into the first queue, so the first queue looks like
+    (2, 0, 0)   9
+after removing the first entry: (1, 0, 0).
+The second is appended into the second queue, so the second queue looks like
+    (0, 1, 0)   5
+    (1, 1, 0)   15
+The third goes into the third queue:
+    (0, 0, 1)   7
+    (1, 0, 1)   21
+
+Procedure
+After comparing the first entries from each quque, once the smallest number is removed from the corresponing queue, generate next numbers from this number as
+    If it comes from the first queue, it generates three numbers:
+        3 * n
+        5 * n
+        7 * n
+    The first one is appended into the first queue; the second into the second queue; the third into the third queue.
+    If it comes from the second queue, it generates two numbers:
+        5 * n
+        7 * n
+    The first one is appended into the second queu; the second into the third queue.
+    If it comes from the third queue, it generates only one number:
+        7 * n
+    which is appended into third queue.
+Claims:
+    Claim 1. If it comes from the second queue, it is not necessary to generate 3 * n because it is already generated when the smaller one is removed from the first queue.
+    Claim 2. A generated number is appended into a queue, it is the largest one in the queue such that all numbers in a queue are sorted in ascening order.
+
+
 (a, b, c) represents 3^a 5^b 7^c; (a, b, c) = 3^a 5^b 7^c
 
 1. start with (0, 0, 0)
@@ -103,10 +147,11 @@ now we have
  */
 
 #include <iostream>
-#include <vector>
+#include <deque>
 using namespace std;
 #include <stdlib.h> // strtol
 #include <stdio.h>  // snprintf
+#include <assert.h> // assert
 
 enum EntryType
 {
@@ -115,31 +160,45 @@ enum EntryType
     THIRD   = 2
 };
 
+typedef unsigned long num;
+
 struct Repr
 {
-    Repr(unsigned a, unsigned b, unsigned c, unsigned n, EntryType et) : m_a(a), m_b(b), m_c(c), m_n(n), m_et(et) {
+    Repr(unsigned a, unsigned b, unsigned c, num n, EntryType et) : m_a(a), m_b(b), m_c(c), m_n(n), m_et(et) {
     }
 
     unsigned m_a;
     unsigned m_b;
     unsigned m_c;
-    unsigned m_n;
+    num m_n;
     EntryType m_et;
 
-    void get_next_numbers(vector<Repr>& reprs)
+    void get_next_numbers(deque<Repr>& reprs)
     {
         reprs.clear();
         switch (m_et) {
         case FIRST:
+            if (3 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a + 1, m_b, m_c, 3 * m_n, FIRST));
+            if (5 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a, m_b + 1, m_c, 5 * m_n, SECOND));
+            if (7 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a, m_b, m_c + 1, 7 * m_n, THIRD));
             break;
         case SECOND:
+            if (5 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a, m_b + 1, m_c, 5 * m_n, SECOND));
+            if (7 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a, m_b, m_c + 1, 7 * m_n, THIRD));
             break;
         default:    // THIRD
+            if (7 * m_n < m_n)
+                throw "overflow";
             reprs.push_back(Repr(m_a, m_b, m_c + 1, 7 * m_n, THIRD));
             break;
         }
@@ -148,7 +207,7 @@ struct Repr
     string str(void)
     {
         char s[128];
-        snprintf(s, 128, "(%u, %u, %u) = %u [%d]", m_a, m_b, m_c, m_n, m_et);
+        snprintf(s, 128, "(%u, %u, %u) = %lu [%d]", m_a, m_b, m_c, m_n, m_et);
         return string(s);
     }
     void print(void)
@@ -162,48 +221,69 @@ Repr kth(int k)
     if (k <= 0)
         throw "k <= 0";
 
-    vector<vector<Repr> > reprs_list;
+    deque<Repr> repr3_queue;
+    deque<Repr> repr5_queue;
+    deque<Repr> repr7_queue;
     Repr repr1 = Repr(0, 0, 0, 1, FIRST);
-    vector<Repr> reprs;
+    deque<Repr> reprs;
     repr1.get_next_numbers(reprs);
-/*
-    for (vector<Repr>::iterator it = reprs.begin(); it != reprs.end(); ++it) {
-        it->print();
+    for (size_t i = 0; i < reprs.size(); ++i) {
+        const Repr& repr = reprs[i];
+        switch (repr.m_et) {
+        case FIRST:
+            repr3_queue.push_back(repr);
+            break;
+        case SECOND:
+            repr5_queue.push_back(repr);
+            break;
+        case THIRD:
+            repr7_queue.push_back(repr);
+            break;
+        default:
+            break;
+        }
     }
- */
-    reprs_list.push_back(reprs);
     for (int i = 0; i < k; ++i) {
-        size_t smallest_index;
-        unsigned smallest = -1;
-        for (size_t reprs_index = 0; reprs_index < reprs_list.size(); ++reprs_index) {
-            vector<Repr>& reprs = reprs_list[reprs_index];
-/*
-            cout << "reprs[" << reprs_index << "]:" << endl;
-            for (size_t j = 0; j < reprs.size(); ++j) {
-                cout << "   repr[" << j << "]: " << reprs[j].str() << endl;
-            }
- */
-            if (reprs[0].m_n < smallest) {
-                smallest = reprs[0].m_n;
-                smallest_index = reprs_index;
+        Repr repr3 = repr3_queue.front();
+        Repr repr5 = repr5_queue.front();
+        Repr repr7 = repr7_queue.front();
+        if (repr3.m_n < repr5.m_n && repr3.m_n && repr7.m_n) {
+            // repr3
+            repr1 = repr3;
+            repr3_queue.pop_front();
+        } else if (repr5.m_n < repr3.m_n && repr5.m_n < repr7.m_n) {
+            // repr5
+            repr1 = repr5;
+            repr5_queue.pop_front();
+        } else {
+            // repr7
+            repr1 = repr7;
+            repr7_queue.pop_front();
+        }
+        deque<Repr> reprs;
+        try {
+            repr1.get_next_numbers(reprs);
+        } catch (const char *err) {
+            cerr << "ERR: " << err << endl;
+            break;
+        }
+        for (size_t j = 0; j < reprs.size(); ++j) {
+            const Repr& repr = reprs[j];
+            switch (repr.m_et) {
+            case FIRST:
+                repr3_queue.push_back(repr);
+                break;
+            case SECOND:
+                repr5_queue.push_back(repr);
+                break;
+            case THIRD:
+                repr7_queue.push_back(repr);
+                break;
+            default:
+                break;
             }
         }
-        cout << "smallest = " << smallest << endl;
-//      cout << "smallest_index = " << smallest_index << endl;
-        // delete
-        vector<Repr>& reprs_deleted = reprs_list[smallest_index];
-        Repr    repr = reprs_deleted[0];
-        repr1 = repr;
-        reprs_deleted.erase(reprs_deleted.begin());
-        if (reprs_deleted.size() == 0)
-            reprs_list.erase(reprs_list.begin() + smallest_index);
-        vector<Repr> reprs;
-        repr.get_next_numbers(reprs);
-/*
-        for (size_t j = 0; j < reprs.size(); ++j)
-            reprs[j].print();
- */
-        reprs_list.push_back(reprs);
+        cout << "k[" << (1 + i) << "]: " << repr1.m_n << endl;
     }
     return repr1;
 }
