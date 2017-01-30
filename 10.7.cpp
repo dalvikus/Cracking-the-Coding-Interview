@@ -100,44 +100,6 @@ now we have
         (2, 0, 1)   63[3]
 
 5. and so one
-
-at given moment in time, we have a finite list of next numbers where all entries are sorted, so only that amount of comparision is needed to get next number
-
-claim that
-1) for an entry coming from i-th entry, it generates a list of next numbers as
-    (a, b, c) from i-th entry of (x, y, z)
-    1st entry:
-        (a + 1, b, c)
-        (a, b + 1, c)
-        (a, b, c + 1)
-    2nd entry:
-
-if (a, b, c) is 1st entry,
-    (a + 1, b, c)
-    (a, b + 1, c)
-    (a, b, c + 1)
-if (a, b, c) is 2nd entry
-    (a, b + 1, c)
-    (a, b, c + 1)
-if (a, b, c) is 3rd entry
-    (a, b, c + 1)
-
-        what is (x, y, z)?
-        2nd entry of (a, b - 1, c)
-            (a + 1, b - 1, c)
-            (a, b, c)
-            (a, b - 1, c + 1)
-        2nd entry of (
-        no (a + 1, b, c) because (a, b, c) is a
-            i) 2nd entry of the 1st entry of (a - 1, b, c)
-                (a, b, c)
-                (a - 1, b + 1, c)
-                (a - 1, b, c + 1)
-            2nd entry of the 2nd entry of (a, b - 1, c)
-        (a, b + 1, c)
-        (a, b, c + 1)
-    3rd entry:
-        (a, b, c + 1)
  */
 
 #include <iostream>
