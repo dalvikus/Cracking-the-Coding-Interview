@@ -7,6 +7,13 @@
 
 Find lowest number in O(log n).
 Use binary search on left side or right side depending on given number.
+
+or
+Use binary search only once but there are three comparison at
+    middle
+    middle + 1
+    middle - 1
+to determine the direction of next binary search
  */
 
 #include <iostream>
