@@ -78,52 +78,161 @@ The input is not good for the test.
             Xi = 0 or 1 if ai > a
  */
 
-#include <iostream>
-using namespace std;
+#define USE_TABLE   // dynamic programming
+//#define DEBUG
 
-unsigned F(bool X[], int a[], int len, int index, int last_a, bool is_last_a_none)
+#include <iostream>
+#ifdef USE_TABLE
+#include <vector>
+#include <map>
+#endif
+using namespace std;
+#include <stdio.h>  // snprintf
+
+int a[] = {
+    5, 3, 4, 2, 2, 5, 6, 3, 3, 4, 4, 7, 9,
+    5, 3, 4, 2, 2, 5, 6, 3, 3, 4, 4, 7, 9,
+};
+#define LEN ((int) ((sizeof(a) / sizeof(int))))
+bool X[LEN];    // indicator variable
+
+#ifdef USE_TABLE
+struct N
 {
-    if (index == len)
+#ifdef DEBUG
+    unsigned m_counter; /**< how many hits */
+#endif
+    unsigned m_n;   /**< size of array */
+    N() :
+#ifdef DEBUG
+        m_counter(0),
+#endif
+        m_n(0)
+    {}
+    N(unsigned n) :
+#ifdef DEBUG
+        m_counter(1),
+#endif
+        m_n(n)
+    {}
+};
+
+/**
+    in case of no last number,
+    tells N at given index
+ */
+vector<N>               table_Fx(LEN, N());
+vector<map<int, N> >    table_Fo(LEN, map<int, N>());
+#endif
+ 
+unsigned F(int index, int last_a, bool is_last_a_none)
+{
+    if (index == LEN)
         return 0;
 
-    if (index < 0 || index > len)
+    if (index < 0 || index > LEN)
         throw "out of range";
 
+#ifdef USE_TABLE
     if (is_last_a_none) {
-        X[index] = true;
-        unsigned n1 = 1 + F(X, a, len, index + 1, a[index], false);
-        X[index] = false;
-        unsigned n2 = F(X, a, len, index + 1, last_a, true);
+        N& nref = table_Fx[index];
+        if (nref.m_n > 0) {
+#ifdef DEBUG
+            ++nref.m_counter;
+#endif
+            return nref.m_n;
+        }
+    } else {
+        map<int, N>& m = table_Fo[index];
+        map<int, N>::iterator mi = m.find(last_a);
+        if (mi != m.end()) {
+#ifdef DEBUG
+            ++mi->second.m_counter;
+#endif
+            return mi->second.m_n;
+        }
+    }
+#endif
+
+    unsigned n;
+    if (is_last_a_none || a[index] > last_a) {
+        unsigned n1 = 1 + F(index + 1, a[index], false);
+        unsigned X1[LEN];
+        for (int i = 0; i < LEN; ++i)
+            X1[i] = X[i];
+        unsigned n2 = F(index + 1, last_a, is_last_a_none);
+        unsigned X2[LEN];
+        for (int i = 0; i < LEN; ++i)
+            X2[i] = X[i];
         X[index] = n1 > n2;
-        return n1 > n2 ? n1 : n2;
+        for (int i = index + 1; i < LEN; ++i)
+            X[i] = n1 > n2 ? X1[i] : X2[i];
+        n = n1 > n2 ? n1 : n2;
+    } else {
+        if (a[index] < last_a) {
+            X[index] = false;
+            n = F(index + 1, last_a, false);
+        } else if (a[index] == last_a) {
+            X[index] = true;
+            n = 1 + F(index + 1, last_a /* a[index] */, false);
+        }
     }
-    // is_last_a_none: false
-    if (a[index] < last_a) {
-        X[index] = false;
-        return F(X, a, len, index + 1, last_a, false);
-    } else if (a[index] == last_a) {
-        X[index] = true;
-        return 1 + F(X, a, len, index + 1, last_a /* a[index] */, false);
+#ifdef USE_TABLE
+    if (is_last_a_none) {
+        N& nref = table_Fx[index];
+        nref.m_n = n;
+#ifdef DEBUB
+        nref.m_counter = 1;
+#endif
+    } else {
+        map<int, N>& m = table_Fo[index];
+        m[last_a] = N(n);
     }
-    // a[index] > last_a
-    X[index] = true;
-    unsigned n1 = 1 + F(X, a, len, index + 1, a[index], false);
-    X[index] = false;
-    unsigned n2 = F(X, a, len, index + 1, last_a, false);
-    X[index] = n1 > n2;
-    return n1 > n2 ? n1 : n2;
+#endif
+    return n;
 }
 
 int main(void)
 {
-    int a[] = {5, 3, 4, 2, 2, 5, 6, 3, 3, 4, 4, 7, 9};
-#define LEN (sizeof(a) / sizeof(int))
-    bool X[LEN];
-    unsigned n = F(X, a, LEN, 0, -1, true);
+    unsigned n = F(0, -1, true);
     cout << "n = " << n << endl;
-    for (size_t i = 0; i < LEN; ++i)
+    for (int i = 0; i < LEN; ++i)
         cout << a[i] << "(" << X[i] << ") ";
     cout << endl;
 
+#ifdef USE_TABLE
+#ifdef DEBUG
+    cout << "table_Fx:" << endl;
+    for (size_t i = 0; i < table_Fx.size(); ++i) {
+        const N& nref = table_Fx[i];
+        cout << "[" << i << "]: " << nref.m_n << " (" << nref.m_counter << ")" << endl; 
+    }
+    cout << "table_Fo:" << endl;
+    for (size_t i = 0; i < table_Fx.size(); ++i) {
+        map<int, N>& m = table_Fo[i];
+        cout << "  [" << i << "]" << endl;
+        for (map<int, N>::iterator iter = m.begin(); iter != m.end(); ++iter) {
+            const N& nref = iter->second;
+            cout << "    " << iter->first << ": " << nref.m_n << " (" << nref.m_counter << ")" << endl; 
+        }
+    }
+#endif
+#endif
+
+    cout << "n = " << n << endl;
+    for (int i = 0; i < LEN; ++i)
+        cout << a[i] << " ";
+    cout << endl;
+    for (int i = 0; i < LEN; ++i) {
+        char s[32];
+        snprintf(s, 32, "%d", a[i]);
+        string str(s);
+        string str0(str.size(), ' ');
+        if (X[i])
+            cout << str << " ";
+        else
+            cout << str0 << " ";
+    }
+    cout << endl;
     return 0;
 }
