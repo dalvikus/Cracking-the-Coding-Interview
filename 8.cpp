@@ -133,11 +133,12 @@ void distribute_pennies(unsigned cents, unsigned quarters, unsigned dimes, unsig
 }
 void distribute_nickels(unsigned cents, unsigned quarters, unsigned dimes, unsigned nickels, vector<Coin>& ways)
 {
-    unsigned c = cents;
+cout << "distribute_nickels: cents = " << cents << endl;;
+    int c = cents;
     unsigned n = nickels;
-    while (c >= 5) {
+    while (c >= 0) {
+        distribute_pennies(c, quarters, dimes, n, ways);
         ++n;
-        distribute_pennies(c - 5, quarters, dimes, n, ways);
         c -= 5;
     }
     if (c > 0)
@@ -145,23 +146,27 @@ void distribute_nickels(unsigned cents, unsigned quarters, unsigned dimes, unsig
 }
 void distribute_dimes(unsigned cents, unsigned quarters, unsigned dimes, unsigned nickels, vector<Coin>& ways)
 {
-    unsigned c = cents;
+    int c = cents;
     unsigned d = dimes;
-    while (c >= 10) {
+    while (c >= 0) {
+        distribute_nickels(c, quarters, d, nickels, ways);
         ++d;
-        distribute_nickels(c - 10, quarters, d, nickels, ways);
         c -= 10;
     }
+    if (c > 0)
+        distribute_nickels(c, quarters, d, nickels, ways);
 }
 void distribute_quarters(unsigned cents, unsigned quarters, unsigned dimes, unsigned nickels, vector<Coin>& ways)
 {
-    unsigned c = cents;
+    int c = cents;
     unsigned q = quarters;
-    while (c >= 25) {
+    while (c >= 0) {
+        distribute_dimes(c, q, dimes, nickels, ways);
         ++q;
-        distribute_dimes(c - 25, q, dimes, nickels, ways);
         c -= 25;
     }
+    if (c > 0)
+        distribute_dimes(c, q, dimes, nickels, ways);
 }
 int ex8_7(int argc, const char *argv[])
 {
